@@ -10,7 +10,6 @@
 #ifndef __L9963_PLATFORM_H_
 #define __L9963_PLATFORM_H_
 
-#include "l9963.h"
 #include "l9963_status.h"
 
 #include <inttypes.h>

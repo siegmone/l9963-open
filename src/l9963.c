@@ -12,14 +12,26 @@
 #include "l9963_platform.h"
 #include <stdlib.h> /* NULL */
 
+<<<<<<< HEAD
 L9963_Status L9963_Init(L9963_Handle* handle, L9963_Platform interface) {
 	if (interface.L9963_Platform_DelayMs == NULL || interface.L9963_Platform_GetTickMs == NULL || interface.L9963_Platform_GPIO_WritePin == NULL || interface.L9963_Platform_SPI_Receive == NULL || interface.L9963_Platform_SPI_Transmit == NULL) {
 		return L9963_NOT_OK;
 	}
 
 	L9963_Driver_Init(&handle->drv_handle, interface);
+=======
+L9963_Status L9963_init(L9963_Handle *handle, L9963_Platform interface) {
+    if (interface.L9963_Platform_DelayMs == NULL || interface.L9963_Platform_GetTickMs == NULL || interface.L9963_Platform_GPIO_WritePin == NULL || interface.L9963_Platform_SPI_Receive == NULL || interface.L9963_Platform_SPI_Transmit == NULL) {
+        return L9963_NOT_OK;
+    }
 
-	return L9963_OK;
+    L9963_Driver_Handle drv_handle;
+    L9963_Driver_Init(&drv_handle, interface);
+
+    handle->drv_handle = drv_handle;
+>>>>>>> f7a8d9a (formatting)
+
+    return L9963_OK;
 }
 
 L9963_Status L9963_SetDevID(L9963_Handle* handle, uint8_t dev_id) {

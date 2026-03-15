@@ -161,7 +161,7 @@ typedef struct {
 } L9963_Driver_0x7BBurst;
 
 typedef union {
-    uint32_t generics[L9963_Driver_BURST_0x78_LEN];
+    uint32_t               generics[L9963_Driver_BURST_0x78_LEN];
     L9963_Driver_0x78Burst _0x78;
     L9963_Driver_0x7ABurst _0x7A;
     L9963_Driver_0x7BBurst _0x7B;
@@ -263,7 +263,7 @@ L9963_Status L9963_Driver_WaitReceive(L9963_Driver_Handle *dev, L9963_Driver_Fra
  * @param[in] timeout: transmission timeout (ms)
  * @retval L9963_Driver_OK if no error occurs, L9963_Driver_NOT_OK otherwise
  */
-L9963_Status L9963_Driver_SendBurst(L9963_Driver_Handle* dev, uint8_t dev_id, L9963_Driver_BurstCmd command, L9963_Driver_BurstUnion* data, uint8_t expected_frames_n, uint8_t timeout);
+L9963_Status L9963_Driver_SendBurst(L9963_Driver_Handle *dev, uint8_t dev_id, L9963_Driver_BurstCmd command, L9963_Driver_BurstUnion *data, uint8_t expected_frames_n, uint8_t timeout);
 
 /**
  * @brief Converts a 40-bit frame endianess (from Big-Endian to Little-Endian and vice versa)

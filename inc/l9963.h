@@ -19,6 +19,11 @@
 #define L9963_DEBUG 1
 #endif  //L9963_DEBUG
 
+#define L9963_T_WAKEUP_MS 2 /* Time needed for the wakeup procedure (ms) */
+#define L9963_TOTAL_CELLS 14 /* All available device cells number */
+
+#define L9963_ASSERT_STATUS(status) if (status != L9963_OK) return status;
+
 typedef struct {
     L9963_Driver_Handle drv_handle;
 } L9963_Handle;
@@ -64,46 +69,375 @@ typedef enum {
 	_2048MS = 0b11
 } L9963_CommTimeoutEnum;
 
+typedef enum {
+	L9963_FSM_Sleep 		= 0b0001,
+	L9963_FSM_Init			= 0b0010,
+	L9963_FSM_Normal 		= 0b0100,
+	L9963_FSM_CyclicWakeUp 	= 0b1000
+} L9963_FSM_Status;
 
-L9963_Status L9963_init(L9963_Handle *handle, L9963_Platform interface);
+typedef enum {
+	L9963_Balancing_Manual	= 0b01,
+	L9963_Balancing_Timed	= 0b10,
+} L9963_Balancing_Mode;
 
-L9963_Status L9963_addressing_procedure(L9963_Handle *handle,
-										uint8_t iso_freq_sel,
-										uint8_t is_dual_ring,
-										uint8_t out_res_tx_iso,
-										uint8_t lock_isofreq);
+typedef enum {
+	L9963_Balancing_Coarse 	= 0,
+	L9963_Balancing_Fine	= 1,
+} L9963_Balancing_Timer_Res;
 
-L9963_Status L9963_setCommTimeout(L9963_Handle *handle,
-								L9963_CommTimeoutEnum commTimeout,
-								uint8_t device,
-								uint8_t preserve_reg_value);
+typedef enum {
+	_0_0_4S,
+	_0_0_8S,
+	_0_0_12S,
+	_0_0_16S,
+	_0_0_20S,
+	_0_0_24S,
+	_0_0_28S,
+	_0_0_32S,
+	_0_0_36S,
+	_0_0_40S,
+	_0_0_44S,
+	_0_0_48S,
+	_0_0_52S,
+	_0_0_56S,
+	_0_1_0S,
+	_0_1_4S,
+	_0_1_8S,
+	_0_1_12S,
+	_0_1_16S,
+	_0_1_20S,
+	_0_1_24S,
+	_0_1_28S,
+	_0_1_32S,
+	_0_1_36S,
+	_0_1_40S,
+	_0_1_44S,
+	_0_1_48S,
+	_0_1_52S,
+	_0_1_56S,
+	_0_2_0S,
+	_0_2_4S,
+	_0_2_8S,
+	_0_2_12S,
+	_0_2_16S,
+	_0_2_20S,
+	_0_2_24S,
+	_0_2_28S,
+	_0_2_32S,
+	_0_2_36S,
+	_0_2_40S,
+	_0_2_44S,
+	_0_2_48S,
+	_0_2_52S,
+	_0_2_56S,
+	_0_3_0S,
+	_0_3_4S,
+	_0_3_8S,
+	_0_3_12S,
+	_0_3_16S,
+	_0_3_20S,
+	_0_3_24S,
+	_0_3_28S,
+	_0_3_32S,
+	_0_3_36S,
+	_0_3_40S,
+	_0_3_44S,
+	_0_3_48S,
+	_0_3_52S,
+	_0_3_56S,
+	_0_4_0S,
+	_0_4_4S,
+	_0_4_8S,
+	_0_4_12S,
+	_0_4_16S,
+	_0_4_20S,
+	_0_4_24S,
+	_0_4_28S,
+	_0_4_32S,
+	_0_4_36S,
+	_0_4_40S,
+	_0_4_44S,
+	_0_4_48S,
+	_0_4_52S,
+	_0_4_56S,
+	_0_5_0S,
+	_0_5_4S,
+	_0_5_8S,
+	_0_5_12S,
+	_0_5_16S,
+	_0_5_20S,
+	_0_5_24S,
+	_0_5_28S,
+	_0_5_32S,
+	_0_5_36S,
+	_0_5_40S,
+	_0_5_44S,
+	_0_5_48S,
+	_0_5_52S,
+	_0_5_56S,
+	_0_6_0S,
+	_0_6_4S,
+	_0_6_8S,
+	_0_6_12S,
+	_0_6_16S,
+	_0_6_20S,
+	_0_6_24S,
+	_0_6_28S,
+	_0_6_32S,
+	_0_6_36S,
+	_0_6_40S,
+	_0_6_44S,
+	_0_6_48S,
+	_0_6_52S,
+	_0_6_56S,
+	_0_7_0S,
+	_0_7_4S,
+	_0_7_8S,
+	_0_7_12S,
+	_0_7_16S,
+	_0_7_20S,
+	_0_7_24S,
+	_0_7_28S,
+	_0_7_32S,
+	_0_7_36S,
+	_0_7_40S,
+	_0_7_44S,
+	_0_7_48S,
+	_0_7_52S,
+	_0_7_56S,
+	_0_8_0S,
+	_0_8_4S,
+	_0_8_8S,
+	_0_8_12S,
+	_0_8_16S,
+	_0_8_20S,
+	_0_8_24S,
+	_0_8_28S,
+} L9963_Balancing_FineTime;
 
-L9963_Status L9963_set_enabled_cells(L9963_Handle *handle, uint8_t device, uint16_t cells);
+typedef enum {
+	L9963_CellConvTime0_290ms = 	0b000,
+	L9963_CellConvTime1_16ms = 		0b001,
+	L9963_CellConvTime2_32ms = 		0b010,
+	L9963_CellConvTime9_28ms = 		0b011,
+	L9963_CellConvTime18_56ms = 	0b100,
+	L9963_CellConvTime37_12ms = 	0b101,
+	L9963_CellConvTime74_24ms = 	0b110,
+	L9963_CellConvTime148_48ms = 	0b111,
+} L9963_CellConvTimeEnum;
 
-L9963_Status L9963_enable_vref(L9963_Handle *handle, uint8_t device, uint8_t preserve_reg_value);
+/**
+ * @brief Perform initialization of the high level driver.
+ * @param[in] handle: pointer to device handler structure
+ * @param[in] interface: structure that contains the user's platform dependent APIs implementations
+ * @retval L9963_OK if no error occurs, L9963_NOT_OK otherwise
+ */
+L9963_Status L9963_Init(L9963_Handle *handle, L9963_Platform interface);
 
-L9963_Status L9963_start_conversion(L9963_Handle *handle,
-									uint8_t device,
-									uint8_t adc_filter_soc,
-									uint8_t options);
+/**
+ * @brief Perform the device address assignment (dev_id) in the DEV_GEN_CFG register.
+ * @param[in] handle: pointer to device handler structure
+ * @param[in] dev_id: 5-bit long device address
+ * @retval L9963_OK if no error occurs, L9963_NOT_OK otherwise
+ * @note For now, this function can be called only at the device startup
+ */
+L9963_Status L9963_SetDevID(L9963_Handle *handle, uint8_t dev_id);
 
-L9963_Status L9963_poll_conversion(L9963_Handle *handle, uint8_t device, uint8_t *conversion_done);
+/**
+ * @brief Perform the SPI communication timeout.
+ * @param[in] handle: pointer to device handler structure
+ * @param[in] commTiemout: new value of communication timeout
+ * @param[in] dev_id: 5-bit long device address
+ * @retval L9963_OK if no error occurs, L9963_NOT_OK otherwise
+ */
+L9963_Status L9963_SetCommTimeout(L9963_Handle *handle, L9963_CommTimeoutEnum commTimeout, uint8_t dev_id);
 
-L9963_Status L9963_read_cell_voltage(L9963_Handle *handle,
-									uint8_t device,
-									L9963_CellsEnum cell,
-									uint16_t *vcell,
-									uint8_t *data_ready);
+/**
+ * @brief Perform the FSMstatus read from the FSM register.
+ * @param[in] handle: pointer to device handler structure
+ * @param[in] dev_id: 5-bit long device address
+ * @param[out] status: the readed status
+ * @retval L9963_OK if no error occurs, L9963_NOT_OK otherwise
+ */
+L9963_Status L9963_GetFsmStatus(L9963_Handle *handle, uint8_t dev_id, L9963_FSM_Status *status);
 
-L9963_Status L9963_read_batt_voltage(L9963_Handle *handle,
-									uint8_t device,
-									uint16_t *vbatt_monitor,
-									uint32_t *vbatt_sum);
+/**
+ * @brief Perform the device software reset.
+ * @param[in] handle: pointer to device handler structure
+ * @param[in] dev_id: 5-bit long device address
+ * @retval L9963_OK if no error occurs, L9963_NOT_OK otherwise
+ * @note Do not use this function
+ */
+L9963_Status L9963_SoftwareReset(L9963_Handle *handle, uint8_t dev_id);
 
-L9963_Status L9963_read_gpio_voltage(L9963_Handle *handle,
-									uint8_t device,
-									L9963_GpiosEnum gpio,
-									uint16_t *vgpio,
-									uint8_t *data_ready);
+/**
+ * @brief Moves the device's status to the SLEEP status.
+ * @param[in] handle: pointer to device handler structure
+ * @param[in] dev_id: 5-bit long device address
+ * @retval L9963_OK if no error occurs, L9963_NOT_OK otherwise
+ * @note Do not use this function
+ */
+L9963_Status L9963_GoToSleep(L9963_Handle *handle, uint8_t dev_id);
+
+/**
+ * @brief Enables voltage conversion on the specified cells.
+ * @param[in] handle: pointer to device handler structure
+ * @param[in] dev_id: 5-bit long device address
+ * @param[in] en_cells_mask: 14-bit long binary mask that indicates cells (bit set) to enable
+ * @retval L9963_OK if no error occurs, L9963_NOT_OK otherwise
+ */
+L9963_Status L9963_SetEnabledCells(L9963_Handle *handle, uint8_t dev_id, uint16_t en_cells_mask);
+
+// L9963_Status L9963_enable_vref(L9963_Handle *handle, uint8_t device, uint8_t preserve_reg_value);
+
+/**
+ * @brief Request for an On-Demand voltage conversion
+ * @param[in] handle: pointer to device handler structure
+ * @param[in] dev_id: 5-bit long device address
+ * @param[in] adc_filter_soc: timing filter window used for the conversion
+ * @param[in] gpio_conv_en: 1 for enabling also gpio convertion, 0 otherwise
+ * @param[in] hwsc: 1 for enabling hardware self check during convertion, 0 otherwise
+ * @retval L9963_OK if no error occurs, L9963_NOT_OK otherwise
+ */
+L9963_Status L9963_StartOnDemandConversion(L9963_Handle *handle, uint8_t dev_id, L9963_CellConvTimeEnum adc_filter_soc, uint8_t gpio_conv_en, uint8_t hwsc);
+
+/**
+ * @brief Checks if a past on demand voltage conversion is finished
+ * @param[in] handle: pointer to device handler structure
+ * @param[in] dev_id: 5-bit long device address
+ * @param[out] finished: 1 if the conversion is finished, 0 otherwise
+ * @retval L9963_OK if no error occurs, L9963_NOT_OK otherwise
+ */
+L9963_Status L9963_IsOnDemandConversionFinished(L9963_Handle *handle, uint8_t dev_id, uint8_t *finished);
+
+/**
+ * @brief Reads the specified cell voltage binary code.
+ * @param[in] handle: pointer to device handler structure
+ * @param[in] dev_id: 5-bit long device address
+ * @param[in] cell: the desidered cell
+ * @param[out] vcell: the readed voltage
+ * @param[out] data_ready: 0 if data was already read once, 1 otherwise
+ * @retval L9963_OK if no error occurs, L9963_NOT_OK otherwise
+ */
+L9963_Status L9963_ReadCellVoltage(L9963_Handle *handle, uint8_t dev_id, L9963_CellsEnum cell, uint16_t *vcell, uint8_t *data_ready);
+
+/**
+ * @brief Reads the measured battery voltage (via ADC) and the digital sum of all cell's voltages.
+ * @param[in] handle: pointer to device handler structure
+ * @param[in] dev_id: 5-bit long device address
+ * @param[out] vbatt_monitor: the readed battery terminal voltage
+ * @param[out] vbatt_sum: the digital sum of all cell's voltages
+ * @retval L9963_OK if no error occurs, L9963_NOT_OK otherwise
+ */
+L9963_Status L9963_ReadBatteryVoltage(L9963_Handle *handle, uint8_t dev_id, uint16_t *vbatt_monitor, uint32_t *vbatt_sum);
+
+/**
+ * @brief Reads the voltage across a desidered GPIO.
+ * @param[in] handle: pointer to device handler structure
+ * @param[in] dev_id: 5-bit long device address
+ * @param[in] gpio: gpio to read
+ * @param[out] vgpio: the readed gpio voltage
+ * @param[out] data_ready: 0 if data was already read once, 1 otherwise
+ * @retval L9963_OK if no error occurs, L9963_NOT_OK otherwise
+ * @note [Antonio Capone] I'm not sure, but i think that is necessary to set a GPIO as analog input in GPIOx_CONFIG to use this function. It will be tested.
+ */
+L9963_Status L9963_ReadGPIO(L9963_Handle *handle, uint8_t dev_id, L9963_GpiosEnum gpio, uint16_t *vgpio, uint8_t *data_ready);
+
+/**
+ * @brief Enables or disables the Coulomb counting on all cells
+ * @param[in] handle: pointer to device handler structure
+ * @param[in] dev_id: 5-bit long device address
+ * @param[in] enable: 1 for enabling and 0 for disabling
+ * @retval L9963_OK if no error occurs, L9963_NOT_OK otherwise
+ */
+L9963_Status L9963_EnableDisableCoulombCounting(L9963_Handle *handle, uint8_t dev_id, uint8_t enable);
+
+/**
+ * @brief Gets the coulomb counter samples number
+ * @param[in] handle: pointer to device handler structure
+ * @param[in] dev_id: 5-bit long device address
+ * @param[out] n_samples: number of cc samples
+ * @retval L9963_OK if no error occurs, L9963_NOT_OK otherwise
+ */
+L9963_Status L9963_GetCoulombCounterSamples(L9963_Handle *handle, uint8_t dev_id, uint16_t *n_samples);
+
+/**
+ * @brief Sets the balancing mode.
+ * @param[in] handle: pointer to device handler structure
+ * @param[in] dev_id: 5-bit long device address
+ * @param[out] bal_status: balancing mode, manual or timed
+ * @retval L9963_OK if no error occurs, L9963_NOT_OK otherwise
+ */
+L9963_Status L9963_SetBalancingMode(L9963_Handle *handle, uint8_t dev_id, L9963_Balancing_Mode bal_mode);
+
+/**
+ * @brief Sets the timed balancing timer resolution.
+ * @param[in] handle: pointer to device handler structure
+ * @param[in] dev_id: 5-bit long device address
+ * @param[out] res: timer resolution
+ * @retval L9963_OK if no error occurs, L9963_NOT_OK otherwise
+ * @note Only fine mode is implemented
+ */
+L9963_Status L9963_SetBalancingTimerResolution(L9963_Handle *handle, uint8_t dev_id, L9963_Balancing_Timer_Res res);
+
+/**
+ * @brief Define the balancing behavior if timed balancing is enabled and the device goes in sleep mode.
+ * @param[in] handle: pointer to device handler structure
+ * @param[in] dev_id: 5-bit long device address
+ * @param[out] stop_bal_on_sleep: if equal to 0, then when the device goes in sleep state timed balancing is interrupted. Otherwise, the device goes in SILENT_BALANCING state
+ * @retval L9963_OK if no error occurs, L9963_NOT_OK otherwise
+ * @note Timed balancing must be enabled before calling this function
+ */
+L9963_Status L9963_EnableSilentBalancing(L9963_Handle *handle, uint8_t dev_id, uint8_t stop_bal_on_sleep);
+
+/**
+ * @brief Sets the balancing timer (in fine mode) for a given cell.
+ * @param[in] handle: pointer to device handler structure
+ * @param[in] dev_id: 5-bit long device address
+ * @param[out] res: timer resolution
+ * @retval L9963_OK if no error occurs, L9963_NOT_OK otherwise
+ * @note I don't know if this function can ever work
+ */
+L9963_Status L9963_SetCellBalancingFineTime(L9963_Handle *handle, uint8_t dev_id, L9963_CellsEnum cell, L9963_Balancing_FineTime time);
+
+/**
+ * @brief Enables balancing on specified cells.
+ * @param[in] handle: pointer to device handler structure
+ * @param[in] dev_id: 5-bit long device address
+ * @param[in] bal_mask: 14-bit long binary mask that indicates cells (bit set) to enable
+ * @retval L9963_OK if no error occurs, L9963_NOT_OK otherwise
+ */
+L9963_Status L9963_SetBalancingCells(L9963_Handle *handle, uint8_t dev_id, uint16_t bal_mask);
+
+/**
+ * @brief Sets the balancing mode.
+ * @param[in] handle: pointer to device handler structure
+ * @param[in] dev_id: 5-bit long device address
+ * @param[out] start: 1 for manual balancing start, 0 for manual balancing stop
+ * @retval L9963_OK if no error occurs, L9963_NOT_OK otherwise
+ * @note If start != 0 and start != 1, L9963_NOT_OK will be returned.
+ */
+L9963_Status L9963_StartStopBalancing(L9963_Handle *handle, uint8_t dev_id, uint8_t start);
+
+/**
+ * @brief Reads the pack current in asynchronous mode.
+ * @param[in] handle: pointer to device handler structure
+ * @param[in] dev_id: 5-bit long device address
+ * @param[out] current: 18-bit long current inst measurement
+ * @retval L9963_OK if no error occurs, L9963_NOT_OK otherwise
+ */
+L9963_Status L9963_ReadContinousCurrent(L9963_Handle *handle, uint8_t dev_id, uint32_t *current);
+
+/**
+ * @brief Reads the pack current in synchronized mode.
+ * @param[in] handle: pointer to device handler structure
+ * @param[in] dev_id: 5-bit long device address
+ * @param[out] current: 18-bit long current inst measurement
+ * @retval L9963_OK if no error occurs, L9963_NOT_OK otherwise
+ * @note Coulomb Counting routine must be enabled and a voltage conversion on demand request must be performed
+ * before calling this function. The value stored into current must be converted with the appropriate formula (see datasheet)
+ */
+L9963_Status L9963_ReadSynchCurrent(L9963_Handle *handle, uint8_t dev_id, uint32_t *current);
 
 #endif /* __L9963_H_ */
